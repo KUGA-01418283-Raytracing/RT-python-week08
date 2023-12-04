@@ -22,10 +22,10 @@ Note that to submit the rendered results, please use the following parameters.
 - No light is needed. 
 
 1. Complete 'scattering()' method in the 'class Phong(Material)' to represent the Phong BRDF.
-    - render a scene with 3 balls in the scene. Each ball exhibits a Phong material with roughness parameters = 0.8, 0.08 and 0.008.
+    - render a scene with 3 balls in the scene. Each ball exhibits a Phong material with roughness parameters = 0.8, 8 and 30.
     - save the rendered image to 'week08_Phong.png' and submit the rendered file. 
 2. Implement 'class Blinn(Material)'.
-    - render a scene with 3 balls in the scene. Each ball exhibits a Blinn material with roughness parameters = 0.8, 0.08 and 0.008.
+    - render a scene with 3 balls in the scene. Each ball exhibits a Blinn-Phong material with roughness parameters = 0.08, 8 and 300.
     - save the rendered image to 'week08_Blinn.png' and submit the rendered file. 
 3. Implement 'class CookTorrance(Material)'.
     - render a scene with 3 balls in the scene. Each ball exhibits a Cook-Torrance material with .

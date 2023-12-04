@@ -3,6 +3,8 @@
 # It is the rendering equation solver.
 import RT_utility as rtu
 import RT_ray as rtr
+import RT_material as rtm
+import math
 
 class Integrator():
     def __init__(self, bDlight=True) -> None:
@@ -42,10 +44,12 @@ class Integrator():
                     # if not occluded.
                     if not occlusion_hit:
                         # accumulate all unoccluded light
-                        Le = Le + (light.material.emitting() * (1/max_distance))
+                        Le_BRDF = hmat.BRDF(rGen_ray, tolight_ray, hinfo)
+                        Le = Le + (Le_BRDF * light.material.emitting() * min(1.0, 1.0/max_distance))
 
             # return the color
-            return Le + self.compute_scattering(rtr.Ray(hinfo.getP(), sinfo.scattered_ray.getDirection()), scene, maxDepth-1) * sinfo.attenuation_color
+            # Le*attennuation_color upto the point before reflection models otherwise it is not correct.
+            return Le + ( self.compute_scattering(rtr.Ray(hinfo.getP(), sinfo.scattered_ray.getDirection()), scene, maxDepth-1) * sinfo.attenuation_color )
 
         # return scene.get_sky_background_color(rGen_ray)
         return scene.getBackgroundColor()

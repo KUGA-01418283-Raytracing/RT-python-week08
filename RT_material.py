@@ -20,6 +20,10 @@ def refract(vRay, vNormal, fRefractRatio):
         parallel_dir = vNormal*(-math.sqrt(math.fabs(1.0 - perpendiular_dir.len_squared())))
         return perpendiular_dir + parallel_dir
 
+def halfvector(vView, vLight):
+    vH = (vView + vLight)*0.5
+    return vH
+
 def schlick(fCosine, fIOR):
     r0 = (1-fIOR) / (1+fIOR)
     r0 = r0*r0
@@ -46,9 +50,14 @@ class Lambertian(Material):
             scattered_direction = hHinfo.getNormal()
 
         scattered_ray = rtr.Ray(hHinfo.getP(), scattered_direction)
-        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        attenuation_color = self.BRDF(rRayIn, scattered_ray, hHinfo)
         return rtu.Scatterinfo(scattered_ray, attenuation_color)
-    
+
+    def BRDF(self, rView, rLight, hHinfo):
+        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        return attenuation_color
+
+
 # a mirror class
 class Mirror(Material):
     def __init__(self, cAlbedo) -> None:
@@ -60,10 +69,15 @@ class Mirror(Material):
         reflected_ray = rtr.Ray(hHinfo.getP(), reflect(rRayIn.getDirection(), hHinfo.getNormal()))
 
         # get attenuation_color
-        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        attenuation_color = self.BRDF(rRayIn, reflected_ray, hHinfo)
 
         # return scattering info
         return rtu.Scatterinfo(reflected_ray, attenuation_color)
+
+    def BRDF(self, rView, rLight, hHinfo):
+        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        return attenuation_color
+
 
 # A dielectric transparent material 
 class Dielectric(Material):
@@ -73,7 +87,6 @@ class Dielectric(Material):
         self.IOR = fIor
 
     def scattering(self, rRayIn, hHinfo):
-        attenuation_color = self.color_albedo
         refract_ratio = self.IOR
         if hHinfo.front_face:
             refract_ratio = 1.0/self.IOR
@@ -83,18 +96,22 @@ class Dielectric(Material):
         refracted_dir = refract(uv, hHinfo.getNormal(), refract_ratio)
         scattered_ray = rtr.Ray(hHinfo.getP(), refracted_dir)
 
+        attenuation_color = self.BRDF(rRayIn, scattered_ray, hHinfo)
         # return scattering info
         return rtu.Scatterinfo(scattered_ray, attenuation_color)
 
+    def BRDF(self, rView, rLight, hHinfo):
+        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        return attenuation_color
 
 # a texture
 class TextureColor(Material):
     def __init__(self, color_or_texture) -> None:
         super().__init__()
         if isinstance(color_or_texture, rtu.Color):
-            self.albedo = rtt.SolidColor(color_or_texture)
+            self.color_albedo = rtt.SolidColor(color_or_texture)
         else:
-            self.albedo = color_or_texture
+            self.color_albedo = color_or_texture
 
     def scattering(self, rRayIn, hHinfo):
         scattered_direction = hHinfo.getNormal() + rtu.Vec3.random_vec3_unit()
@@ -102,10 +119,14 @@ class TextureColor(Material):
             scattered_direction = hHinfo.getNormal()
 
         scattered_ray = rtr.Ray(hHinfo.getP(), scattered_direction)
-        attenuation_color = self.albedo.tex_value(hHinfo.u, hHinfo.v, hHinfo.point)
+        attenuation_color = self.BRDF(rRayIn, scattered_ray, hHinfo)
 
         return rtu.Scatterinfo(scattered_ray, attenuation_color)
-    
+
+    def BRDF(self, rView, rLight, hHinfo):
+        attenuation_color = self.color_albedo.tex_value(hHinfo.u, hHinfo.v, hHinfo.point)
+        return attenuation_color
+
 
 # A metal class with roughness parameter
 class Metal(Material):
@@ -120,99 +141,92 @@ class Metal(Material):
         # compute scattered ray based on the roughtness parameter
         reflected_direction = reflect(rtu.Vec3.unit_vector(rRayIn.getDirection()), hHinfo.getNormal()) + rtu.Vec3.random_vec3_unit()*self.roughness
         reflected_ray = rtr.Ray(hHinfo.getP(), reflected_direction)
-        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        attenuation_color = self.BRDF(rRayIn, reflected_ray, hHinfo)
 
         # check if the reflected direction is below the surface normal
         if rtu.Vec3.dot_product(reflected_direction, hHinfo.getNormal()) <= 1e-8:
             attenuation_color = rtu.Color(0,0,0)
 
         return rtu.Scatterinfo(reflected_ray, attenuation_color)
-    
+
+    def BRDF(self, rView, rLight, hHinfo):
+        attenuation_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())
+        return attenuation_color    
 
 # Phong reflection model
+# fr = kd + ks*(R.V)^roughness
 class Phong(Material):
-    def __init__(self, cAlbedo, kd, ks, fRoughness) -> None:
+    def __init__(self, cAlbedo, kd, ks, fAlpha) -> None:
         super().__init__()
         self.color_albedo = rtu.Color(cAlbedo.r(), cAlbedo.g(), cAlbedo.b())
         self.kd = kd
         self.ks = ks
-        self.roughness = fRoughness
+        self.alpha = fAlpha
 
     def scattering(self, rRayIn, hHinfo):
-        # compute scattered ray based on the roughtness parameter
-        reflected_direction = hHinfo.getNormal() + rtu.Vec3.random_vec3_unit()
-        if reflected_direction.near_zero():
-            reflected_direction = hHinfo.getNormal()
+        reflected_direction = -hHinfo.getNormal()
+        # check if the reflected direction is below the surface normal
+        while rtu.Vec3.dot_product(reflected_direction, hHinfo.getNormal()) <= 1e-8:
+
+            # compute scattered ray
+            reflected_direction = hHinfo.getNormal() + rtu.Vec3.random_vec3_unit()
+            if reflected_direction.near_zero():
+                reflected_direction = hHinfo.getNormal()
 
         reflected_ray = rtr.Ray(hHinfo.getP(), reflected_direction)
-        # check if the reflected direction is below the surface normal
-        if rtu.Vec3.dot_product(reflected_direction, hHinfo.getNormal()) <= 1e-8:
-            attenuation_color = rtu.Color(0,0,0)
-            return rtu.Scatterinfo(reflected_ray, attenuation_color)
-        
+        phong_color = self.BRDF(rRayIn, reflected_ray, hHinfo)
+
+        return rtu.Scatterinfo(reflected_ray, phong_color)
+
+    def BRDF(self, rView, rLight, hHinfo):
         # calculate diffuse color
-        diff_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.kd
+        diff_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.kd*(1.0/math.pi)
 
-        # calculate specular color
-        perfect_reflection = reflect(rtu.Vec3.unit_vector(reflected_direction), hHinfo.getNormal())
-        R_dot_V = math.fabs(rtu.Vec3.dot_product(perfect_reflection, rRayIn.getDirection()))
-        spec_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.ks*math.pow(R_dot_V, self.roughness)
+        perfect_reflection = rtu.Vec3.unit_vector(reflect(-rLight.getDirection(), hHinfo.getNormal()))
+        viewingVector = rtu.Vec3.unit_vector(-rView.getDirection())
+        R_dot_V = max(0, rtu.Vec3.dot_product(perfect_reflection, viewingVector))
+        spec_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.ks*math.pow(R_dot_V, self.alpha)
 
-        # calculate final color = diffuse color + specular color
-        phong_color = diff_color + spec_color
-
-        # clamping
-        r = rtu.Interval(0,1).clamp(phong_color.r())
-        g = rtu.Interval(0,1).clamp(phong_color.g())
-        b = rtu.Interval(0,1).clamp(phong_color.b())
-        attenuation_color = rtu.Color(r, g, b)
+        return diff_color + spec_color
 
 
-        return rtu.Scatterinfo(reflected_ray, attenuation_color)
-
-
-# Blinn reflection model
+# Blinn-Phong reflection model
+# fr = kd + ks*(H.N)^roughness
 class Blinn(Material):
-    def __init__(self, cAlbedo, kd, ks, fRoughness) -> None:
+    def __init__(self, cAlbedo, kd, ks, fAlpha) -> None:
         super().__init__()
         self.color_albedo = rtu.Color(cAlbedo.r(), cAlbedo.g(), cAlbedo.b())
         self.kd = kd
         self.ks = ks
-        self.roughness = fRoughness
+        self.alpha = fAlpha
 
     def scattering(self, rRayIn, hHinfo):
-        # compute scattered ray based on the roughtness parameter
-        reflected_direction = hHinfo.getNormal() + rtu.Vec3.random_vec3_unit()
-        if reflected_direction.near_zero():
-            reflected_direction = hHinfo.getNormal()
+        reflected_direction = -hHinfo.getNormal()
+        # check if the reflected direction is below the surface normal
+        while rtu.Vec3.dot_product(reflected_direction, hHinfo.getNormal()) <= 1e-8:
+
+            # compute scattered ray
+            reflected_direction = hHinfo.getNormal() + rtu.Vec3.random_vec3_unit()
+            if reflected_direction.near_zero():
+                reflected_direction = hHinfo.getNormal()
 
         reflected_ray = rtr.Ray(hHinfo.getP(), reflected_direction)
-        # check if the reflected direction is below the surface normal
-        if rtu.Vec3.dot_product(reflected_direction, hHinfo.getNormal()) <= 1e-8:
-            attenuation_color = rtu.Color(0,0,0)
-            return rtu.Scatterinfo(reflected_ray, attenuation_color)
-        
+        blinn_color = self.BRDF(rRayIn, reflected_ray, hHinfo)
+
+        return rtu.Scatterinfo(reflected_ray, blinn_color)
+
+    def BRDF(self, rView, rLight, hHinfo):
         # calculate diffuse color
-        diff_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.kd
+        diff_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.kd*(1.0/math.pi)
 
-        # calculate specular color
-        perfect_reflection = reflect(rtu.Vec3.unit_vector(reflected_direction), hHinfo.getNormal())
-        R_dot_V = math.fabs(rtu.Vec3.dot_product(perfect_reflection, rRayIn.getDirection()))
-        spec_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.ks*math.pow(R_dot_V, self.roughness)
+        half_vector = rtu.Vec3.unit_vector(halfvector(-rView.getDirection(), rLight.getDirection()))
+        H_dot_N = max(0, rtu.Vec3.dot_product(half_vector, hHinfo.getNormal()))
+        spec_color = rtu.Color(self.color_albedo.r(), self.color_albedo.g(), self.color_albedo.b())*self.ks*math.pow(H_dot_N, self.alpha)
 
-        # calculate final color = diffuse color + specular color
-        phong_color = diff_color + spec_color
-
-        # clamping
-        r = rtu.Interval(0,1).clamp(phong_color.r())
-        g = rtu.Interval(0,1).clamp(phong_color.g())
-        b = rtu.Interval(0,1).clamp(phong_color.b())
-        attenuation_color = rtu.Color(r, g, b)
-
-
-        return rtu.Scatterinfo(reflected_ray, attenuation_color)
+        return diff_color + spec_color
 
 # Cook-Torrance BRDF model
+# fr = kd/pi + ks*(DFG/4(w_o.N * w_i.N))
 class CookTorrance(Material):
     def __init__(self, cAlbedo, kd, ks, fRoughness) -> None:
         super().__init__()
