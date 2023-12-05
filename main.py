@@ -26,12 +26,11 @@ def renderPhong():
     # add objects to the scene
 
     tex_checker_bw = rtt.CheckerTexture(0.32, rtu.Color(.2, .2, .2), rtu.Color(.9, .9, .9))
-
     mat_tex_checker_bw = rtm.TextureColor(tex_checker_bw)
 
-    mat_phong1 = rtm.Phong(rtu.Color(0.7, 0.2, 0.4), 0.6, 0.9, 0.8)
-    mat_phong2 = rtm.Phong(rtu.Color(0.7, 0.2, 0.4), 0.6, 0.9, 8)
-    mat_phong3 = rtm.Phong(rtu.Color(0.7, 0.2, 0.4), 0.6, 0.9, 30)
+    mat_phong1 = None
+    mat_phong2 = None
+    mat_phong3 = None
 
     world = rts.Scene()
     world.add_object(rto.Sphere(rtu.Vec3(   0,-100.5,-1),  100, mat_tex_checker_bw))
@@ -70,9 +69,9 @@ def renderBlinn():
 
     mat_tex_checker_bw = rtm.TextureColor(tex_checker_bw)
 
-    mat_blinn1 = rtm.Blinn(rtu.Color(0.7, 0.2, 0.4), 0.6, 0.9, 0.08)
-    mat_blinn2 = rtm.Blinn(rtu.Color(0.7, 0.2, 0.4), 0.6, 0.9, 8)
-    mat_blinn3 = rtm.Blinn(rtu.Color(0.7, 0.2, 0.4), 0.6, 0.9, 300)
+    mat_blinn1 = None
+    mat_blinn2 = None
+    mat_blinn3 = None
 
 
     world = rts.Scene()

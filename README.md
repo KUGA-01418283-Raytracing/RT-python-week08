@@ -18,16 +18,18 @@ Note that to submit the rendered results, please use the following parameters.
 - at least 5 max depth.
 - resolution width = 480p.
 - aspect ratio = 16:9.
-- sky as the background.
-- No light is needed. 
 
-1. Complete 'scattering()' method in the 'class Phong(Material)' to represent the Phong BRDF.
-    - render a scene with 3 balls in the scene. Each ball exhibits a Phong material with roughness parameters = 0.8, 8 and 30.
-    - save the rendered image to 'week08_Phong.png' and submit the rendered file. 
+1. Complete 'scattering()' and 'BRDF()' methods in the 'class Phong(Material)' to represent the Phong BRDF.
+    - The scene for this problem is 'renderPhong()'
+    - Render a scene with 3 balls in the scene. Each ball exhibits a Phong material with roughness parameters = 0.8, 8 and 30.
+    - Save the rendered image to 'week08_Phong.png' and submit the rendered file. 
 2. Implement 'class Blinn(Material)'.
-    - render a scene with 3 balls in the scene. Each ball exhibits a Blinn-Phong material with roughness parameters = 0.08, 8 and 300.
-    - save the rendered image to 'week08_Blinn.png' and submit the rendered file. 
-3. Implement 'class CookTorrance(Material)'.
-    - render a scene with 3 balls in the scene. Each ball exhibits a Cook-Torrance material with .
-    - save the rendered image to 'week08_CookTorance.png' and submit the rendered file. 
+    - The scene for this problem is 'renderBlinn()'
+    - Render a scene with 3 balls in the scene. Each ball exhibits a Blinn-Phong material with roughness parameters = 0.08, 8 and 300.
+    - Save the rendered image to 'week08_Blinn.png' and submit the rendered file. 
+3. Implement 'class CookTorrance(Material)'. The parameters and equations used in the Cook-Torrance model is in the link.
+    - http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
+    - Reuse the above scene for this problem.
+    - Render a scene with 3 balls in the scene. Each ball exhibits a Cook-Torrance material with .
+    - Save the rendered image to 'week08_CookTorance.png' and submit the rendered file. 
 
