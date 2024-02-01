@@ -7,8 +7,9 @@ import RT_material as rtm
 import math
 
 class Integrator():
-    def __init__(self, bDlight=True) -> None:
+    def __init__(self, bDlight=True, bSkyBG=False) -> None:
         self.bool_direct_lighting = bDlight
+        self.bool_sky_background = bSkyBG        
         pass
 
     def compute_scattering(self, rGen_ray, scene, maxDepth):
@@ -45,12 +46,23 @@ class Integrator():
                     if not occlusion_hit:
                         # accumulate all unoccluded light
                         Le_BRDF = hmat.BRDF(rGen_ray, tolight_ray, hinfo)
-                        Le = Le + (Le_BRDF * light.material.emitting() * min(1.0, 1.0/max_distance))
+                        # Le = Le + (Le_BRDF * light.material.emitting() * min(1.0, 1.0/max_distance))
+                        NdotLe = rtu.Vec3.dot_product(hinfo.getNormal(), tolight_dir)
+                        if NdotLe < 1e-06:
+                            NdotLe = 0.0
+                        direct_L_i = light.material.emitting()
+                        Le = Le + (Le_BRDF * direct_L_i * NdotLe)
 
             # return the color
             # Le*attennuation_color upto the point before reflection models otherwise it is not correct.
-            return Le + ( self.compute_scattering(rtr.Ray(hinfo.getP(), sinfo.scattered_ray.getDirection()), scene, maxDepth-1) * sinfo.attenuation_color )
+            NdotL = rtu.Vec3.dot_product(hinfo.getNormal(), sinfo.scattered_ray.getDirection())
+            if NdotL < 1e-06:
+                NdotL = 0.0
+            L_i = self.compute_scattering(sinfo.scattered_ray, scene, maxDepth-1)
+            Fr =  hmat.BRDF(rGen_ray, sinfo.scattered_ray, hinfo)
+            return Le + ( Fr * L_i * NdotL )
 
-        # return scene.get_sky_background_color(rGen_ray)
-        return scene.getBackgroundColor()
+        if self.bool_sky_background:
+            return scene.get_sky_background_color(rGen_ray)
+        return scene.getBackgroundColor()    
 
