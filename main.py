@@ -91,6 +91,6 @@ def renderBlinn():
     renderer.write_img2png('week08_brdf_Blinn.png')    
 
 if __name__ == "__main__":
-    renderPhong()
+    renderBlinn()
 
 

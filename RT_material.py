@@ -228,4 +228,3 @@ class CookTorrance(Material):
 
         return diff_color + spec_color
     
-
